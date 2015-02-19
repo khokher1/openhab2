@@ -63,9 +63,14 @@ public class ZigBeeCoordinatorCC2530Handler extends ZigBeeCoordinatorHandler {
         zigbeeApi = new ZigBeeApi(portId, panId, channelId, false);
         if (!zigbeeApi.startup()) {
             logger.debug("Unable to start ZigBee network");
+            
+            // TODO: Close the network!
+            
+            
         } else {
             logger.debug("ZigBee network started");
         }
+    
 
 	}
 

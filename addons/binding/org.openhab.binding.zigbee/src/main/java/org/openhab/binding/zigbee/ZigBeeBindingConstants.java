@@ -28,10 +28,15 @@ public class ZigBeeBindingConstants {
     public final static ThingTypeUID COORDINATOR_TYPE_CC2530 = new ThingTypeUID(BINDING_ID, "coordinator_cc2530");
 
     // List of all Thing Type UIDs
+    public final static ThingTypeUID THING_TYPE_LIGHT = new ThingTypeUID(BINDING_ID, "light");
     public final static ThingTypeUID THING_TYPE_TEMPERATURE = new ThingTypeUID(BINDING_ID, "temperature");
 
     // List of all Channel ids
-    public final static String CHANNEL_1 = "temperature";
+    public final static String CHANNEL_TEMPERATURE = "temperature";
+    public final static String CHANNEL_SWITCH = "switch";
+    public static final String CHANNEL_COLORTEMPERATURE = "color_temperature";
+    public static final String CHANNEL_COLOR = "color";
+    public static final String CHANNEL_BRIGHTNESS = "brightness";
 
     // List of all parameters
     public final static String PARAMETER_PANID = "panid";
@@ -45,7 +50,12 @@ public class ZigBeeBindingConstants {
     		);
 
     public final static Set<ThingTypeUID> SUPPORTED_DEVICE_TYPES_UIDS = ImmutableSet.of(
-    		THING_TYPE_TEMPERATURE
+    		THING_TYPE_TEMPERATURE,
+    		THING_TYPE_LIGHT
+    		);
+
+    public final static Set<ThingTypeUID> SUPPORTED_LIGHT_DEVICE_TYPES_UIDS = ImmutableSet.of(
+    		THING_TYPE_LIGHT
     		);
 
     public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = ImmutableSet.of(
@@ -53,6 +63,7 @@ public class ZigBeeBindingConstants {
     		COORDINATOR_TYPE_CC2530,
     		
     		// Things
-    		THING_TYPE_TEMPERATURE
+    		THING_TYPE_TEMPERATURE,
+    		THING_TYPE_LIGHT
     		);
 }

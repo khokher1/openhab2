@@ -34,7 +34,7 @@ public class ZigBeeDeviceHandler extends BaseThingHandler {
 
 	@Override
 	public void handleCommand(ChannelUID channelUID, Command command) {
-        if(channelUID.getId().equals(CHANNEL_1)) {
+        if(channelUID.getId().equals(CHANNEL_TEMPERATURE)) {
             // TODO: handle command
         }
 	}

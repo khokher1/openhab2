@@ -16,6 +16,7 @@ import org.openhab.binding.zigbee.ZigBeeBindingConstants;
 import org.openhab.binding.zigbee.handler.ZigBeeCoordinatorCC2530Handler;
 import org.openhab.binding.zigbee.handler.ZigBeeCoordinatorHandler;
 import org.openhab.binding.zigbee.handler.ZigBeeDeviceHandler;
+import org.openhab.binding.zigbee.handler.ZigBeeLightHandler;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -63,8 +64,8 @@ public class ZigBeeHandlerFactory extends BaseThingHandlerFactory {
 
 			// registerDeviceDiscoveryService(handler);
 			return handler;
-		} else if (SUPPORTED_DEVICE_TYPES_UIDS.contains(thingTypeUID)) {
-			return new ZigBeeDeviceHandler(thing);
+		} else if (SUPPORTED_LIGHT_DEVICE_TYPES_UIDS.contains(thingTypeUID)) {
+			return new ZigBeeLightHandler(thing);
 		} else {
 			logger.debug("ThingHandler not found for {}",
 					thing.getThingTypeUID());

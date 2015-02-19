@@ -10,7 +10,11 @@ package org.openhab.binding.zigbee.handler;
 import static org.openhab.binding.zigbee.ZigBeeBindingConstants.*;
 
 import org.bubblecloud.zigbee.ZigBeeApi;
+import org.bubblecloud.zigbee.api.Device;
+import org.bubblecloud.zigbee.api.ZigBeeDeviceException;
+import org.bubblecloud.zigbee.api.cluster.general.OnOff;
 import org.eclipse.smarthome.config.core.Configuration;
+import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -68,5 +72,34 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler {
 		for (Thing child : getThing().getThings()) {
 			child.setStatus(status);
 		}
+	}
+	
+    private Device getDeviceByIndexOrEndpointId(ZigBeeApi zigbeeApi, String deviceIdentifier) {
+        Device device;
+        device = zigbeeApi.getDevice(deviceIdentifier);
+        if(device == null) {
+        	logger.debug("Error finding ZigBee device with address {}", deviceIdentifier);
+        }
+        return device;
+    }
+
+	public boolean LightOnOff(String lightAddress, OnOffType state) {
+        final Device device = getDeviceByIndexOrEndpointId(zigbeeApi, lightAddress);
+        if (device == null) {
+            return false;
+        }
+        final OnOff onOff = device.getCluster(OnOff.class);
+        try {
+        	if(state == OnOffType.ON) {
+        		onOff.on();
+        	}
+        	else {
+        		onOff.off();
+        	}
+        } catch (ZigBeeDeviceException e) {
+            e.printStackTrace();
+        }
+
+        return true;
 	}
 }
