@@ -7,7 +7,11 @@
  */
 package org.openhab.binding.zigbee;
 
+import java.util.Set;
+
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
+
+import com.google.common.collect.ImmutableSet;
 
 /**
  * The {@link ZigBeeBinding} class defines common constants, which are 
@@ -17,12 +21,38 @@ import org.eclipse.smarthome.core.thing.ThingTypeUID;
  */
 public class ZigBeeBindingConstants {
 
+	// Binding Name
     public static final String BINDING_ID = "zigbee";
     
+    // Coordinator (Bridges)
+    public final static ThingTypeUID COORDINATOR_TYPE_CC2530 = new ThingTypeUID(BINDING_ID, "coordinator_cc2530");
+
     // List of all Thing Type UIDs
-    public final static ThingTypeUID THING_TYPE_SAMPLE = new ThingTypeUID(BINDING_ID, "sample");
+    public final static ThingTypeUID THING_TYPE_TEMPERATURE = new ThingTypeUID(BINDING_ID, "temperature");
 
     // List of all Channel ids
-    public final static String CHANNEL_1 = "channel1";
+    public final static String CHANNEL_1 = "temperature";
 
+    // List of all parameters
+    public final static String PARAMETER_PANID = "panid";
+    public final static String PARAMETER_CHANNEL = "channel";
+    public final static String PARAMETER_PORT = "port";
+    
+    public final static String PARAMETER_MACADDRESS = "macAddress";
+
+    public final static Set<ThingTypeUID> SUPPORTED_BRIDGE_TYPES_UIDS = ImmutableSet.of(
+    		COORDINATOR_TYPE_CC2530
+    		);
+
+    public final static Set<ThingTypeUID> SUPPORTED_DEVICE_TYPES_UIDS = ImmutableSet.of(
+    		THING_TYPE_TEMPERATURE
+    		);
+
+    public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = ImmutableSet.of(
+    		// Coordinators
+    		COORDINATOR_TYPE_CC2530,
+    		
+    		// Things
+    		THING_TYPE_TEMPERATURE
+    		);
 }
