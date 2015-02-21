@@ -18,7 +18,7 @@
 				<description>Channel number</description>
 				<default>11</default>
 			</parameter>
-			<parameter name="panid" type="integer" required="false">
+			<parameter name="panid" type="Integer" required="false">
 				<label>PAN ID</label>
 				<description>PAN Network ID</description>
 				<default>0</default>

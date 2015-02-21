@@ -7,7 +7,15 @@
  */
 package org.openhab.binding.zigbee.handler;
 
-public interface ZigBeeLightListener {
+import java.util.Dictionary;
+
+import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
+
+public interface ZigBeeEventListener {
+	public void onEndpointStateChange();
+
+	public void onAttributeUpdate(final Dictionary<Attribute, Object> reports);
+
 	/**
 	 * This method is called whenever the state of the given light has changed.
 	 * The new state can be obtained by {@link FullLight#getState()}.
@@ -17,8 +25,7 @@ public interface ZigBeeLightListener {
 	 * @param light
 	 *            The light which received the state update.
 	 */
-	// public void onLightStateChanged(ZigBeeCoordinatorHandler coordinator,
-	// ZigBeeLight light);
+//	public void onLightStateChanged(ZigBeeCoordinatorHandler coordinator, ZigBeeLight light);
 
 	/**
 	 * This method us called whenever a light is removed.
@@ -39,7 +46,6 @@ public interface ZigBeeLightListener {
 	 * @param light
 	 *            The light which is added.
 	 */
-// public void onLightAdded(ZigBeeCoordinatorHandler coordinator,
-//	 ZigBeeLight light);
+//	public void onLightAdded(ZigBeeCoordinatorHandler coordinator, ZigBeeLight light);
 
 }

@@ -69,8 +69,9 @@ public class ZigBeeCoordinatorCC2530Handler extends ZigBeeCoordinatorHandler {
             
         } else {
             logger.debug("ZigBee network started");
+            
+            waitForNetwork();
         }
-    
 
 	}
 
