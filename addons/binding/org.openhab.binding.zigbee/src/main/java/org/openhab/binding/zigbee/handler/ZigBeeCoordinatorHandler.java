@@ -7,8 +7,10 @@
  */
 package org.openhab.binding.zigbee.handler;
 
-import static org.openhab.binding.zigbee.ZigBeeBindingConstants.*;
+import static org.openhab.binding.zigbee.ZigBeeBindingConstants.PARAMETER_CHANNEL;
+import static org.openhab.binding.zigbee.ZigBeeBindingConstants.PARAMETER_PANID;
 
+import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,12 +21,13 @@ import org.bubblecloud.zigbee.api.Device;
 import org.bubblecloud.zigbee.api.DeviceListener;
 import org.bubblecloud.zigbee.api.ZigBeeDeviceException;
 import org.bubblecloud.zigbee.api.cluster.Cluster;
-import org.bubblecloud.zigbee.api.cluster.general.LevelControl;
 import org.bubblecloud.zigbee.api.cluster.general.ColorControl;
+import org.bubblecloud.zigbee.api.cluster.general.LevelControl;
 import org.bubblecloud.zigbee.api.cluster.general.OnOff;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
 import org.bubblecloud.zigbee.util.Cie;
+import org.eclipse.smarthome.config.discovery.DiscoveryService;
 import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.thing.Bridge;
@@ -33,6 +36,8 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
 import org.eclipse.smarthome.core.types.Command;
+import org.openhab.binding.zigbee.discovery.ZigBeeDiscoveryService;
+import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,6 +134,9 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		// Start the discovery service
         discoveryService = new ZigBeeDiscoveryService(this);
         discoveryService.activate();
+        
+        // And register it as an OSGi service
+        bundleContext.registerService(DiscoveryService.class.getName(), discoveryService, new Hashtable<String, Object>());
 
 		logger.debug("Browsing ZigBee network ...");
 		Thread thread = new Thread() {

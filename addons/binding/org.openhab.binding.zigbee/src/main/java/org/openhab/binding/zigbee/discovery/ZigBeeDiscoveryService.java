@@ -5,7 +5,7 @@
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  */
-package org.openhab.binding.zigbee.handler;
+package org.openhab.binding.zigbee.discovery;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +20,7 @@ import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.openhab.binding.zigbee.ZigBeeBindingConstants;
+import org.openhab.binding.zigbee.handler.ZigBeeCoordinatorHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +66,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 
 	@Override
 	public Set<ThingTypeUID> getSupportedThingTypes() {
-		return ZigBeeBindingConstants.SUPPORTED_THING_TYPES_UIDS;
+		return ZigBeeBindingConstants.SUPPORTED_DEVICE_TYPES_UIDS;
 	}
 
 	@Override

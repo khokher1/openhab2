@@ -48,7 +48,7 @@ public class SerialPortImpl implements
 			serialPort.setSerialPortParams(115200, SerialPort.DATABITS_8,
 					SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 			this.serialPort.enableReceiveThreshold(1);
-			this.serialPort.enableReceiveTimeout(5000);
+			this.serialPort.enableReceiveTimeout(120000);
 
 			// RXTX serial port library causes high CPU load
 			// Start event listener, which will just sleep and slow down event
