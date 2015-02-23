@@ -116,6 +116,8 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 			logger.debug("ZigBee '{}' device at address {}",
 					device.getDeviceType(), device.getEndpointId());
 
+			addNewDevice(device);
+
 			// Signal to the handlers that they are known...
 			if (eventListeners.get(device.getEndpointId()) != null) {
 				eventListeners.get(device.getEndpointId())
@@ -134,7 +136,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		// Start the discovery service
         discoveryService = new ZigBeeDiscoveryService(this);
         discoveryService.activate();
-        
+
         // And register it as an OSGi service
         bundleContext.registerService(DiscoveryService.class.getName(), discoveryService, new Hashtable<String, Object>());
 
@@ -250,23 +252,28 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		return true;
 	}
 
-	Object attributeRead(String zigbeeAddress, int clusterId, int attributeIndex) {
+	public Object attributeRead(String zigbeeAddress, int clusterId, int attributeIndex) {
 		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
 				zigbeeAddress);
 		if (device == null) {
-			return false;
+			return null;
 		}
-
+		
+		return readAttribute(device, clusterId, attributeIndex);
+	}
+	
+	
+	public Object readAttribute(Device device, int clusterId, int attributeIndex) {
 		final Cluster cluster = device.getCluster(clusterId);
 		if (cluster == null) {
 			logger.debug("Cluster not found.");
-			return false;
+			return null;
 		}
 
 		final Attribute attribute = cluster.getAttributes()[attributeIndex];
 		if (attribute == null) {
 			logger.debug("Attribute not found.");
-			return false;
+			return null;
 		}
 
 		try {
@@ -276,17 +283,6 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 			e.printStackTrace();
 			return null;
 		}
-
-		/*
-		 * Dictionary<Attribute, Object> event = new Hashtable<Attribute,
-		 * Object>(); try { event.put(attribute, attribute.getValue());
-		 * if(eventListeners.get(zigbeeAddress) != null) {
-		 * eventListeners.get(zigbeeAddress).onAttributeUpdate(event); } } catch
-		 * (ZigBeeClusterException e) { // TODO Auto-generated catch block
-		 * e.printStackTrace(); }
-		 */
-
-		// return true;
 	}
 	
 	/**
@@ -298,6 +294,15 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	}
 
 	public void startDeviceDiscovery() {
+		final List<Device> devices = zigbeeApi.getDevices();
+		for (int i = 0; i < devices.size(); i++) {
+			final Device device = devices.get(i);
+			logger.debug("ZigBee '{}' device at address {}",
+					device.getDeviceType(), device.getEndpointId());
+			addNewDevice(device);
+		}
+
+		
 //		ZigBeeDiscoveryManager discoveryManager = zigbeeApi.getZigBeeDiscoveryManager();
 //		discoveryManager.
 	}
@@ -329,6 +334,8 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		// TODO Auto-generated method stub
 		logger.debug("Device ADDED: {} {} {}", device.getIEEEAddress(),
 				device.getDeviceType(), device.getProfileId());
+		
+		addNewDevice(device);
 	}
 
 	@Override
@@ -343,5 +350,29 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		// TODO Auto-generated method stub
 		logger.debug("Device REMOVED: {} {} {}", device.getIEEEAddress(),
 				device.getDeviceType(), device.getProfileId());
+	}
+	
+	private class DiscoveryThread extends Thread {
+		public void run(Device device) {
+			logger.debug("Device Discovery: {} {} {}", device.getIEEEAddress(),
+					device.getDeviceType(), device.getProfileId());
+			
+			String description = null;
+			Object manufacturer = readAttribute(device, 0, 4);		// Manufacturer
+			if(manufacturer != null) {
+				description = manufacturer.toString();
+				Object model = readAttribute(device, 0, 5);			// Model
+				if(model != null) {
+					description = manufacturer.toString() + ":" + model.toString();
+				}
+			}
+
+			discoveryService.deviceAdded(device, description);
+		}
+	}
+
+	private void addNewDevice(Device device) {
+		DiscoveryThread discover = new DiscoveryThread();
+		discover.run(device);
 	}
 }

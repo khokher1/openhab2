@@ -249,12 +249,12 @@ public class ByteUtils {
      */
     public static boolean isByteValue(int b) {
         final boolean valid = ((b & 0xffffff00) == 0 || (b & 0xffffff00) == 0xffffff00);
-        /*if (logger.isTraceEnabled() && valid && (b < -128 || b > 127)) {
+        if (logger.isTraceEnabled() && valid && (b < -128 || b > 127)) {
             logger.trace(
                     "The value {} ({}) is considered a byte because only the 8 least significant bits are set" +
                             ", but its value is outside signed byte that is between -128 and 127", b, Integer.toHexString(b)
             );
-        }*/
+        }
         return valid;
     }
 
@@ -263,11 +263,11 @@ public class ByteUtils {
             throw new IllegalArgumentException("Error converting " + b + " input value to hex string it is larger than a byte");
         }
         if (b < 0) {
-            return Integer.toHexString(b).substring(6).toUpperCase();
+            return "0x" + Integer.toHexString(b).substring(6);
         } else if (b < 0x10) {
-            return "0" + Integer.toHexString(b).toUpperCase();
+            return "0x0" + Integer.toHexString(b);
         } else if (b >= 0x10) {
-            return Integer.toHexString(b).toUpperCase();
+            return "0x" + Integer.toHexString(b);
         } else {
             throw new IllegalArgumentException("Unable to recognize the value " + b);
         }

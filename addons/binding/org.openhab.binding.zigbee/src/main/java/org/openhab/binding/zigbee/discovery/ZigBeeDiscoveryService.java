@@ -31,8 +31,7 @@ import org.slf4j.LoggerFactory;
  * @author Chris Jackson - Initial contribution
  *
  */
-public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
-		DeviceListener {
+public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 	private final Logger logger = LoggerFactory
 			.getLogger(ZigBeeDiscoveryService.class);
 
@@ -50,7 +49,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 				coordinatorHandler.getThing().getUID());
 
 		// Listen for device events
-		coordinatorHandler.addDeviceListener(this);
+//		coordinatorHandler.addDeviceListener(this);
 
 //		startScan();
 	}
@@ -61,7 +60,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 				coordinatorHandler.getThing().getUID());
 
 		// Remove the listener
-		coordinatorHandler.removeDeviceListener(this);
+//		coordinatorHandler.removeDeviceListener(this);
 	}
 
 	@Override
@@ -74,26 +73,20 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 		logger.debug("Starting ZigBee scan for {}", coordinatorHandler
 				.getThing().getUID());
 
-		List<Device> devices = coordinatorHandler.getDeviceList();
-		if (devices != null) {
-			for (Device device : devices) {
-				deviceAdded(device);
-			}
-		}
 		// Start the search for new devices
-		// coordinatorHandler.startDeviceDiscovery();
+		coordinatorHandler.startDeviceDiscovery();
 	}
 
 	private ThingUID getThingUID(Device device) {
 		ThingUID bridgeUID = coordinatorHandler.getThing().getUID();
 
-		// Our thing ID is based on the ZigBee device type.
+		// Our thing ID is based on the ZigBee device type - we need to remove spaces
 		ThingTypeUID thingTypeUID = new ThingTypeUID(
 				ZigBeeBindingConstants.BINDING_ID, device.getDeviceType()
-						.replaceAll("\\s+", ""));
+						.replace(" ", ""));
 
 		if (getSupportedThingTypes().contains(thingTypeUID)) {
-			String thingId = String.format("%04X", device.getNetworkAddress());
+			String thingId = device.getIEEEAddress().replace(":", "");
 			ThingUID thingUID = new ThingUID(thingTypeUID, bridgeUID, thingId);
 			return thingUID;
 		} else {
@@ -101,13 +94,16 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 		}
 	}
 
-	@Override
-	public void deviceAdded(Device device) {
-		logger.debug("Device discovery: {} {} {} {}", device.getIEEEAddress(),
+	public void deviceAdded(Device device, String description) {
+		logger.debug("Device discovery: {} {} {}", device.getIEEEAddress(),
 				device.getDeviceType(), device.getProfileId());
 
 		ThingUID thingUID = getThingUID(device);
 		if (thingUID != null) {
+			String label = device.getDeviceType();
+			if(description != null) {
+				label += "(" + description + ")";
+			}
 			ThingUID bridgeUID = coordinatorHandler.getThing().getUID();
 			Map<String, Object> properties = new HashMap<>(1);
 			properties.put(ZigBeeBindingConstants.PARAMETER_MACADDRESS,
@@ -116,7 +112,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 					.create(thingUID)
 					.withProperties(properties)
 					.withBridge(bridgeUID)
-					.withLabel(device.getDeviceType())
+					.withLabel(label)
 					.build();
 
 			thingDiscovered(discoveryResult);
@@ -126,12 +122,10 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService implements
 		}
 	}
 
-	@Override
 	public void deviceUpdated(Device device) {
 		// Nothing to do here!
 	}
 
-	@Override
 	public void deviceRemoved(Device device) {
 		ThingUID thingUID = getThingUID(device);
 
