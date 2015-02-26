@@ -7,13 +7,14 @@
  */
 package org.openhab.binding.zigbee.discovery;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.bubblecloud.zigbee.api.Device;
-import org.bubblecloud.zigbee.api.DeviceListener;
+import org.bubblecloud.zigbee.api.ZigBeeApiConstants;
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
@@ -38,10 +39,29 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 	private final static int SEARCH_TIME = 60;
 
 	private ZigBeeCoordinatorHandler coordinatorHandler;
+	List<ZigBeeThingType> zigbeeThingTypeList = new ArrayList<ZigBeeThingType>();
 
 	public ZigBeeDiscoveryService(ZigBeeCoordinatorHandler coordinatorHandler) {
 		super(SEARCH_TIME);
 		this.coordinatorHandler = coordinatorHandler;
+
+		// The following code adds devices to a list.
+		// The device list resolves Thing names from supported clusters
+		// The discovery code will search through this list to find the
+		// best matching cluster list and use the name for this Thing.
+		// A 'best match' is defined as the maximum number of matching clusters.
+		zigbeeThingTypeList.add(new ZigBeeThingType(
+				"DimmableLight", new int[] {
+				ZigBeeApiConstants.CLUSTER_ID_ON_OFF,
+				ZigBeeApiConstants.CLUSTER_ID_LEVEL_CONTROL
+			}));
+		zigbeeThingTypeList.add(new ZigBeeThingType(
+				"ColorDimmableLight", new int[] {
+				ZigBeeApiConstants.CLUSTER_ID_ON_OFF,
+				ZigBeeApiConstants.CLUSTER_ID_COLOR_CONTROL,
+				ZigBeeApiConstants.CLUSTER_ID_LEVEL_CONTROL
+			}));
+
 	}
 
 	public void activate() {
@@ -49,9 +69,9 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 				coordinatorHandler.getThing().getUID());
 
 		// Listen for device events
-//		coordinatorHandler.addDeviceListener(this);
+		// coordinatorHandler.addDeviceListener(this);
 
-//		startScan();
+		// startScan();
 	}
 
 	@Override
@@ -60,7 +80,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 				coordinatorHandler.getThing().getUID());
 
 		// Remove the listener
-//		coordinatorHandler.removeDeviceListener(this);
+		// coordinatorHandler.removeDeviceListener(this);
 	}
 
 	@Override
@@ -80,10 +100,25 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 	private ThingUID getThingUID(Device device) {
 		ThingUID bridgeUID = coordinatorHandler.getThing().getUID();
 
-		// Our thing ID is based on the ZigBee device type - we need to remove spaces
+		int max = 0;
+		ZigBeeThingType bestThing = null;
+		for(ZigBeeThingType thing : zigbeeThingTypeList) {
+			int s = thing.getScore(device);
+			if(s > max) {
+				max = s;
+				bestThing = thing;
+			}
+		}
+		if(bestThing == null) {
+			logger.debug("No ThingUID found for device");
+			return null;
+		}
+		logger.debug("Using ThingUID: ", bestThing.getUID());
+		
+		// Our thing ID is based on the ZigBee device type - we need to remove
+		// spaces
 		ThingTypeUID thingTypeUID = new ThingTypeUID(
-				ZigBeeBindingConstants.BINDING_ID, device.getDeviceType()
-						.replace(" ", ""));
+				ZigBeeBindingConstants.BINDING_ID, bestThing.getUID());
 
 		if (getSupportedThingTypes().contains(thingTypeUID)) {
 			String thingId = device.getIEEEAddress().replace(":", "");
@@ -101,7 +136,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 		ThingUID thingUID = getThingUID(device);
 		if (thingUID != null) {
 			String label = device.getDeviceType();
-			if(description != null) {
+			if (description != null) {
 				label += "(" + description + ")";
 			}
 			ThingUID bridgeUID = coordinatorHandler.getThing().getUID();
@@ -109,11 +144,8 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 			properties.put(ZigBeeBindingConstants.PARAMETER_MACADDRESS,
 					device.getIEEEAddress());
 			DiscoveryResult discoveryResult = DiscoveryResultBuilder
-					.create(thingUID)
-					.withProperties(properties)
-					.withBridge(bridgeUID)
-					.withLabel(label)
-					.build();
+					.create(thingUID).withProperties(properties)
+					.withBridge(bridgeUID).withLabel(label).build();
 
 			thingDiscovered(discoveryResult);
 		} else {
@@ -133,8 +165,47 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 			thingRemoved(thingUID);
 		}
 	}
-	
-    @Override
-    protected void startBackgroundDiscovery() {
-    }
+
+	@Override
+	protected void startBackgroundDiscovery() {
+	}
+
+	private class ZigBeeThingType {
+//		COLOR_DIMMABLE_LIGHT("ColorDimmableLight", new int[] {
+//				ZigBeeApiConstants.CLUSTER_ID_ON_OFF,
+//				ZigBeeApiConstants.CLUSTER_ID_ON_OFF }
+//				);
+
+		private String label;
+		private List<Integer> clusters;
+
+		private ZigBeeThingType(String label, int clusters[]) {
+			this.label = label;
+			this.clusters = new ArrayList<Integer>();
+			for (int i = 0; i < clusters.length; i++) {
+				this.clusters.add(clusters[i]);
+			} 
+		}
+
+		/**
+		 * Return a count of how many many clusters this thing type
+		 * supports in the device 
+		 * @param device
+		 * @return
+		 */
+		public int getScore(Device device) {
+			int score = 0;
+
+			for (int c : device.getInputClusters()) {
+            	if(clusters.contains(c)) {
+            		score++;
+            	}
+            }
+			return score;
+		}
+		
+		public String getUID() {
+			return label;
+		}
+	}
 }

@@ -37,7 +37,6 @@ import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.zigbee.discovery.ZigBeeDiscoveryService;
-import org.osgi.framework.ServiceRegistration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -352,6 +351,17 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 				device.getDeviceType(), device.getProfileId());
 	}
 	
+	/**
+	 * Adds a new device to the network.
+	 * This starts a thread to read information about the device so we can
+	 * present this information to the user.
+	 * @param device
+	 */
+	private void addNewDevice(Device device) {
+		DiscoveryThread discover = new DiscoveryThread();
+		discover.run(device);
+	}
+
 	private class DiscoveryThread extends Thread {
 		public void run(Device device) {
 			logger.debug("Device Discovery: {} {} {}", device.getIEEEAddress(),
@@ -369,10 +379,5 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 
 			discoveryService.deviceAdded(device, description);
 		}
-	}
-
-	private void addNewDevice(Device device) {
-		DiscoveryThread discover = new DiscoveryThread();
-		discover.run(device);
 	}
 }

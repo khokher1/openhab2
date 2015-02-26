@@ -35,7 +35,7 @@ import org.bubblecloud.zigbee.util.ThreadUtils;
 import org.bubblecloud.zigbee.network.model.IEEEAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+//import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -233,7 +233,8 @@ public class EndpointBuilder implements Stoppable {
      * @since 0.6.0 - Revision 74
      */
     private boolean changedNetworkAddress(ZigBeeNodeImpl node, int nwk) {
-        throw new NotImplementedException();
+    	return false;
+//        throw new NotImplementedException();
     }
 
     boolean inspectingNewEndpoint = false;

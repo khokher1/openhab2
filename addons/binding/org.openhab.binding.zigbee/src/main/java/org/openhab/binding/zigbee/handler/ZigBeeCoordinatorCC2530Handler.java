@@ -9,7 +9,10 @@ package org.openhab.binding.zigbee.handler;
 
 import static org.openhab.binding.zigbee.ZigBeeBindingConstants.*;
 
+import java.util.EnumSet;
+
 import org.bubblecloud.zigbee.ZigBeeApi;
+import org.bubblecloud.zigbee.network.model.DiscoveryMode;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -60,7 +63,9 @@ public class ZigBeeCoordinatorCC2530Handler extends ZigBeeCoordinatorHandler {
 		// TODO: Only the port initialisation should be done here and then pass
 		// TODO: This to the parent to handle the protocol.
 		// TODO: Needs splitting IO in the library!
-        zigbeeApi = new ZigBeeApi(portId, panId, channelId, false);
+        final EnumSet<DiscoveryMode> discoveryModes = DiscoveryMode.ALL;
+        //discoveryModes.remove(DiscoveryMode.LinkQuality);
+        zigbeeApi = new ZigBeeApi(portId, panId, channelId, false, discoveryModes);
         if (!zigbeeApi.startup()) {
             logger.debug("Unable to start ZigBee network");
             
