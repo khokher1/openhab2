@@ -113,7 +113,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 			logger.debug("No ThingUID found for device");
 			return null;
 		}
-		logger.debug("Using ThingUID: ", bestThing.getUID());
+		logger.debug("Using ThingUID: {}", bestThing.getUID());
 		
 		// Our thing ID is based on the ZigBee device type - we need to remove
 		// spaces
