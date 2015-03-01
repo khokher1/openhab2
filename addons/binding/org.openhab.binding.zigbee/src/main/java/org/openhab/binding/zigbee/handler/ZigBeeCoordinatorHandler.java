@@ -10,6 +10,7 @@ package org.openhab.binding.zigbee.handler;
 import static org.openhab.binding.zigbee.ZigBeeBindingConstants.PARAMETER_CHANNEL;
 import static org.openhab.binding.zigbee.ZigBeeBindingConstants.PARAMETER_PANID;
 
+import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.Hashtable;
 import java.util.List;
@@ -77,10 +78,11 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	public void initialize() {
 		logger.debug("Initializing ZigBee coordinator.");
 
-		// panId = ((BigDecimal)getConfig().get(PARAMETER_PANID)).intValue();
-		panId = Integer.parseInt((String) getConfig().get(PARAMETER_PANID));
-		channelId = Integer.parseInt((String) getConfig()
-				.get(PARAMETER_CHANNEL));
+		panId = ((BigDecimal)getConfig().get(PARAMETER_PANID)).intValue();
+		channelId = ((BigDecimal)getConfig().get(PARAMETER_CHANNEL)).intValue();
+		//panId = Integer.parseInt((String) getConfig().get(PARAMETER_PANID));
+		//channelId = Integer.parseInt((String) getConfig()
+		//		.get(PARAMETER_CHANNEL));
 
 		super.initialize();
 	}
