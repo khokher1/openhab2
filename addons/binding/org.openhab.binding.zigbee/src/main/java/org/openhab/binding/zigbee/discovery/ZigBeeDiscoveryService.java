@@ -121,7 +121,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 				ZigBeeBindingConstants.BINDING_ID, bestThing.getUID());
 
 		if (getSupportedThingTypes().contains(thingTypeUID)) {
-			String thingId = device.getEndpointId().replaceAll("[^a-zA-Z0-9_]", "_");
+			String thingId = device.getEndpointId().toLowerCase().replaceAll("[^a-z0-9_/]", "").replaceAll("/", "_");
 			ThingUID thingUID = new ThingUID(thingTypeUID, bridgeUID, thingId);
 			return thingUID;
 		} else {

@@ -398,7 +398,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 				description = manufacturer.toString();
 				Object model = readAttribute(device, 0, 5);			// Model
 				if(model != null) {
-					description = manufacturer.toString() + ":" + model.toString();
+					description = manufacturer.toString().trim() + ":" + model.toString().trim();
 				}
 			}
 
