@@ -121,7 +121,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 				ZigBeeBindingConstants.BINDING_ID, bestThing.getUID());
 
 		if (getSupportedThingTypes().contains(thingTypeUID)) {
-			String thingId = device.getIEEEAddress().replace(":", "");
+			String thingId = device.getEndpointId().replaceAll("[^a-zA-Z0-9_]", "_");
 			ThingUID thingUID = new ThingUID(thingTypeUID, bridgeUID, thingId);
 			return thingUID;
 		} else {
@@ -130,7 +130,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 	}
 
 	public void deviceAdded(Device device, String description) {
-		logger.debug("Device discovery: {} {} {}", device.getIEEEAddress(),
+		logger.debug("Device discovery: {} {} {}", device.getEndpointId(),
 				device.getDeviceType(), device.getProfileId());
 
 		ThingUID thingUID = getThingUID(device);
@@ -142,7 +142,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 			ThingUID bridgeUID = coordinatorHandler.getThing().getUID();
 			Map<String, Object> properties = new HashMap<>(1);
 			properties.put(ZigBeeBindingConstants.PARAMETER_MACADDRESS,
-					device.getIEEEAddress());
+					device.getEndpointId());
 			DiscoveryResult discoveryResult = DiscoveryResultBuilder
 					.create(thingUID).withProperties(properties)
 					.withBridge(bridgeUID).withLabel(label).build();
@@ -171,11 +171,6 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 	}
 
 	private class ZigBeeThingType {
-//		COLOR_DIMMABLE_LIGHT("ColorDimmableLight", new int[] {
-//				ZigBeeApiConstants.CLUSTER_ID_ON_OFF,
-//				ZigBeeApiConstants.CLUSTER_ID_ON_OFF }
-//				);
-
 		private String label;
 		private List<Integer> clusters;
 

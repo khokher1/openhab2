@@ -35,7 +35,6 @@ import org.bubblecloud.zigbee.util.ThreadUtils;
 import org.bubblecloud.zigbee.network.model.IEEEAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-//import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -73,12 +72,12 @@ public class EndpointBuilder implements Stoppable {
 
     private class ZigBeeEndpointReference {
         ZigBeeNode node;
-        byte endPoint;
+        short endPoint;
 
-        ZigBeeEndpointReference(ZigBeeNode node, byte endPoint) {
+        ZigBeeEndpointReference(ZigBeeNode node, short ep) {
             super();
             this.node = node;
-            this.endPoint = endPoint;
+            this.endPoint = ep;
         }
     }
 
@@ -122,7 +121,7 @@ public class EndpointBuilder implements Stoppable {
             return false;
         }
 
-        byte[] endPoints = result.getActiveEndPointList();
+        short[] endPoints = result.getActiveEndPointList();
         logger.trace("Found {} end points on #{}.", endPoints.length, nwkAddress);
         for (int i = 0; i < endPoints.length; i++) {
             doCreateZigBeeEndpoint(node, endPoints[i]);
@@ -131,7 +130,7 @@ public class EndpointBuilder implements Stoppable {
         return true;
     }
 
-    private void doCreateZigBeeEndpoint(ZigBeeNode node, byte ep) {
+    private void doCreateZigBeeEndpoint(ZigBeeNode node, short ep) {
         final ZigBeeNetwork network = ApplicationFrameworkLayer.getAFLayer(driver).getZigBeeNetwork();
         synchronized (network) {
             if (network.containsEndpoint(node.getIEEEAddress(), ep)) {
@@ -234,7 +233,6 @@ public class EndpointBuilder implements Stoppable {
      */
     private boolean changedNetworkAddress(ZigBeeNodeImpl node, int nwk) {
     	return false;
-//        throw new NotImplementedException();
     }
 
     boolean inspectingNewEndpoint = false;

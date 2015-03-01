@@ -13,6 +13,8 @@ import java.util.EnumSet;
 
 import org.bubblecloud.zigbee.ZigBeeApi;
 import org.bubblecloud.zigbee.network.model.DiscoveryMode;
+import org.bubblecloud.zigbee.network.port.ZigBeePort;
+import org.bubblecloud.zigbee.network.port.ZigBeeSerialPortImpl;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -47,7 +49,7 @@ public class ZigBeeCoordinatorCC2530Handler extends ZigBeeCoordinatorHandler {
 
 	@Override
 	public void initialize() {
-		logger.debug("Initializing ZigBee CC2530EMK bridge handler.");
+		logger.debug("Initializing ZigBee CC2530EMK serial bridge handler.");
 
 		portId = (String) getConfig().get(PARAMETER_PORT);
 
@@ -63,21 +65,10 @@ public class ZigBeeCoordinatorCC2530Handler extends ZigBeeCoordinatorHandler {
 		// TODO: Only the port initialisation should be done here and then pass
 		// TODO: This to the parent to handle the protocol.
 		// TODO: Needs splitting IO in the library!
-        final EnumSet<DiscoveryMode> discoveryModes = DiscoveryMode.ALL;
         //discoveryModes.remove(DiscoveryMode.LinkQuality);
-        zigbeeApi = new ZigBeeApi(portId, panId, channelId, false, discoveryModes);
-        if (!zigbeeApi.startup()) {
-            logger.debug("Unable to start ZigBee network");
-            
-            // TODO: Close the network!
-            
-            
-        } else {
-            logger.debug("ZigBee network started");
-            
-            waitForNetwork();
-        }
+        ZigBeePort serialPort = new ZigBeeSerialPortImpl(portId, 115200);
 
+		initializeZigBee(serialPort);
 	}
 
 	@Override

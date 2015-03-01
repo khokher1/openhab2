@@ -10,6 +10,7 @@ package org.openhab.binding.zigbee.handler;
 import static org.openhab.binding.zigbee.ZigBeeBindingConstants.PARAMETER_CHANNEL;
 import static org.openhab.binding.zigbee.ZigBeeBindingConstants.PARAMETER_PANID;
 
+import java.util.EnumSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +27,8 @@ import org.bubblecloud.zigbee.api.cluster.general.LevelControl;
 import org.bubblecloud.zigbee.api.cluster.general.OnOff;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
+import org.bubblecloud.zigbee.network.model.DiscoveryMode;
+import org.bubblecloud.zigbee.network.port.ZigBeePort;
 import org.bubblecloud.zigbee.util.Cie;
 import org.eclipse.smarthome.config.discovery.DiscoveryService;
 import org.eclipse.smarthome.core.library.types.HSBType;
@@ -98,6 +101,28 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		for (Thing child : getThing().getThings()) {
 			child.setStatus(status);
 		}
+	}
+	
+	/**
+	 * Common initialisation point for all ZigBee coordinators.
+	 * Called by bridges after they have initialised their interfaces.
+	 * @param networkInterface a ZigBeePort interface instance
+	 */
+	protected void initializeZigBee(ZigBeePort networkInterface) {
+        final EnumSet<DiscoveryMode> discoveryModes = DiscoveryMode.ALL;
+
+        zigbeeApi = new ZigBeeApi(networkInterface, panId, channelId, false, discoveryModes);
+        if (!zigbeeApi.startup()) {
+            logger.debug("Unable to start ZigBee network");
+            
+            // TODO: Close the network!
+            
+            
+        } else {
+            logger.debug("ZigBee network started");
+            
+            waitForNetwork();
+        }
 	}
 
 	/**
