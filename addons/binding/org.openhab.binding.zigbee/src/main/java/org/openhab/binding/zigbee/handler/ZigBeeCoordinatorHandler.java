@@ -225,17 +225,9 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		}
 
 		try {
-			state = state * 256 / 100;
-			if (state > 254) {
-				state = 254;
-			}
-			if (state < 0) {
-				state = 0;
-			}
-
 			final LevelControl levelControl = device
 					.getCluster(LevelControl.class);
-			levelControl.moveToLevel((short) state, 10);
+			levelControl.moveToLevelWithOnOff((short)(state * 254.0 / 100.0 + 0.5), 10);
 		} catch (ZigBeeDeviceException e) {
 			e.printStackTrace();
 		}
