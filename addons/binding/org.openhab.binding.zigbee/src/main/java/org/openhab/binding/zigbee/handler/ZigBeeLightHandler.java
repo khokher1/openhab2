@@ -7,6 +7,7 @@
  */
 package org.openhab.binding.zigbee.handler;
 
+import org.eclipse.smarthome.core.library.types.DecimalType;
 import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.PercentType;
@@ -20,7 +21,6 @@ import org.eclipse.smarthome.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.Color;
 import java.util.Dictionary;
 import java.util.Set;
 
@@ -46,12 +46,12 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	private String lightAddress;
 	private Attribute attrOnOff;
 	private Attribute attrLevel;
-	private Attribute attrColorX;
-	private Attribute attrColorY;
+	private Attribute attrHue;
+	private Attribute attrSaturation;
+	private Attribute attrColorTemp;
 
-	private Integer currentColorTemp;
 	private OnOffType currentOnOff;
-	private Color currentHSB;
+	private HSBType currentHSB;
 
 	private Logger logger = LoggerFactory.getLogger(ZigBeeEventListener.class);
 
@@ -69,8 +69,9 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		lightAddress = configAddress;
 		attrOnOff = null;
 		attrLevel = null;
-		attrColorX = null;
-		attrColorY = null;
+		attrHue = null;
+		attrSaturation = null;
+		attrColorTemp = null;
 	}
 
 	protected void bridgeHandlerInitialized(ThingHandler thingHandler, Bridge bridge) {
@@ -131,10 +132,33 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 			break;
 
 		case ZigBeeBindingConstants.CHANNEL_COLOR:
-			if (!(command instanceof HSBType)) {
-				return;
+			if (command instanceof HSBType) {
+				currentHSB = new HSBType(((HSBType)command).getHue(), currentHSB.getSaturation(), PercentType.HUNDRED);
+			} else if (command instanceof PercentType) {
+				currentHSB = new HSBType(currentHSB.getHue(), (PercentType)command, PercentType.HUNDRED);
+			} else if (command instanceof OnOffType) {
+				PercentType saturation;
+				if ((OnOffType)command == OnOffType.ON) {
+					saturation = PercentType.HUNDRED;
+				} else {
+					saturation = PercentType.ZERO;
+				}
+				currentHSB = new HSBType(currentHSB.getHue(), saturation, PercentType.HUNDRED);
 			}
-			coordinatorHandler.LightColor(lightAddress, (HSBType) command);
+			coordinatorHandler.LightColor(lightAddress, currentHSB);
+			break;
+		case ZigBeeBindingConstants.CHANNEL_COLORTEMPERATURE:
+			PercentType colorTemp = PercentType.ZERO;
+			if (command instanceof PercentType) {
+				colorTemp = (PercentType)command;
+			} else if (command instanceof OnOffType) {
+				if ((OnOffType)command == OnOffType.ON) {
+					colorTemp = PercentType.HUNDRED;
+				} else {
+					colorTemp = PercentType.ZERO;
+				}
+			}
+			coordinatorHandler.LightColorTemp(lightAddress, colorTemp);
 			break;
 		}
 	}
@@ -145,13 +169,14 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 			if (attrOnOff != null) {
 				updateStateOnOff((boolean)attrOnOff.getValue());
 			}
-
 			if (attrLevel != null) {
 				updateStateLevel((int)attrLevel.getValue());
 			}
-
-			if (attrColorX != null && attrColorY != null) {
-				updateStateColor((int)attrColorX.getValue(), (int)attrColorY.getValue());
+			if (attrHue != null && attrSaturation != null) {
+				updateStateColor((int)attrHue.getValue(), (int)attrSaturation.getValue());
+			}
+			if (attrColorTemp != null) {
+				updateStateColorTemp((int)attrColorTemp.getValue());
 			}
 		} catch (ZigBeeClusterException e) {
 			// TODO Auto-generated catch block
@@ -170,10 +195,12 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		}
 
 		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT)) {
-			attrColorX = coordinatorHandler.openAttribute(lightAddress,
-					ColorControlCluster.ID, Attributes.CURRENT_X, null);
-			attrColorY = coordinatorHandler.openAttribute(lightAddress,
-					ColorControlCluster.ID, Attributes.CURRENT_Y, null);
+			attrHue = coordinatorHandler.openAttribute(lightAddress,
+					ColorControlCluster.ID, Attributes.CURRENT_HUE, null);
+			attrSaturation = coordinatorHandler.openAttribute(lightAddress,
+					ColorControlCluster.ID, Attributes.CURRENT_SATURATION, null);
+			attrColorTemp = coordinatorHandler.openAttribute(lightAddress,
+					ColorControlCluster.ID, Attributes.COLOR_TEMPERATURE, null);
 		}
 	}
 
@@ -181,8 +208,9 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	public void closeDevice() {
 		coordinatorHandler.closeAttribute(attrOnOff, this);
 		coordinatorHandler.closeAttribute(attrLevel, this);
-		coordinatorHandler.closeAttribute(attrColorX, null);
-		coordinatorHandler.closeAttribute(attrColorY, null);
+		coordinatorHandler.closeAttribute(attrHue, null);
+		coordinatorHandler.closeAttribute(attrSaturation, null);
+		coordinatorHandler.closeAttribute(attrColorTemp, null);
 	}
 
 	@Override
@@ -217,16 +245,25 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_BRIGHTNESS), chanPercent);
 	}
 
-	private void updateStateColor(int colorX, int colorY) {
-/*      TODO implement Rgb.cie2rgb, and saturation
-		Integer stateTemp = (Integer) coordinatorHandler.attributeRead(lightAddress,
-		ZigBeeApiConstants.CLUSTER_ID_COLOR_CONTROL, Attributes.COLOR_TEMPERATURE.getId());
-		Rgb rgb = Rgb.cie2rgb(stateX / 65536.0, stateY / 65536.0, 1);
-		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLOR), rgb);
-		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLORTEMPERATURE), chanSat);
-*/
+	private void updateStateColor(int hue, int saturation) {
+		currentHSB = new HSBType(new DecimalType(hue * 360.0 / 254.0 + 0.5),
+				new PercentType((int)(saturation * 100.0 / 254.0 + 0.5)), PercentType.HUNDRED);
+		PercentType statePercent = new PercentType((int)(saturation * 100.0 / 254.0 + 0.5));
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLOR), currentHSB);
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLOR), statePercent);
 	}
 
+	private void updateStateColorTemp(int colorTemp) {
+		// Range of 2000K to 6000K, gain = 4000K, offset = 2000K
+		int value = (int)(((1e6 / colorTemp) - 2000.0) / 4000.0 * 100.0 + 0.5);
+		if (value < 0) {
+			value = 0;
+		}else if (value > 100) {
+			value = 100;
+		}
+		PercentType state = new PercentType(value);
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLORTEMPERATURE), state);
+	}
 	/*
 	 * @Override public void onLightRemoved(HueBridge bridge, FullLight light) {
 	 * 

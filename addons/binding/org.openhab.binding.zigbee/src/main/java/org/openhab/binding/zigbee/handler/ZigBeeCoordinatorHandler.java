@@ -32,10 +32,10 @@ import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
 import org.bubblecloud.zigbee.api.cluster.impl.attribute.AttributeDescriptor;
 import org.bubblecloud.zigbee.network.model.DiscoveryMode;
 import org.bubblecloud.zigbee.network.port.ZigBeePort;
-import org.bubblecloud.zigbee.util.Cie;
 import org.eclipse.smarthome.config.discovery.DiscoveryService;
 import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -250,20 +250,35 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		}
 
 		try {
-			int red = state.getRed().intValue();
-			int green = state.getGreen().intValue();
-			int blue = state.getBlue().intValue();
+			int hue = state.getHue().intValue();
+			int saturation = state.getSaturation().intValue();
+			colorControl.moveToHue((int)(hue * 254.0 / 360.0 + 0.5), 0, 10);
+			colorControl.movetoSaturation((int)(saturation * 254.0 / 100.0 + 0.5), 10);
+		} catch (ZigBeeDeviceException e) {
+			e.printStackTrace();
+		}
 
-			Cie cie = Cie.rgb2cie(red, green, blue);
-			int x = (int) (cie.x * 65536);
-			int y = (int) (cie.y * 65536);
-			if (x > 65279) {
-				x = 65279;
-			}
-			if (y > 65279) {
-				y = 65279;
-			}
-			colorControl.moveToColor(x, y, 10);
+		return true;
+	}
+
+	public boolean LightColorTemp(String lightAddress, PercentType state) {
+		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
+				lightAddress);
+		if (device == null) {
+			return false;
+		}
+
+		final ColorControl colorControl = device.getCluster(ColorControl.class);
+		if (colorControl == null) {
+			logger.debug("Device {} does not support color control.",
+					lightAddress);
+			return false;
+		}
+
+		try {
+			// Range of 2000K to 6000K, gain = 4000K, offset = 2000K
+			double kelvin = state.intValue() * 4000.0 / 100.0 + 2000.0;
+			colorControl.moveToColorTemperature((short)(1e6 / kelvin + 0.5), 10);
 		} catch (ZigBeeDeviceException e) {
 			e.printStackTrace();
 		}
@@ -277,7 +292,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		if (device == null) {
 			return null;
 		}
-		
+
 		return readAttribute(device, clusterId, attributeIndex);
 	}
 	
