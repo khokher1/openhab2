@@ -22,17 +22,21 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.util.Dictionary;
-import java.util.Enumeration;
 import java.util.Set;
 
-import org.bubblecloud.zigbee.api.ZigBeeApiConstants;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
+import org.bubblecloud.zigbee.api.cluster.impl.api.core.ReportListener;
+import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
+import org.bubblecloud.zigbee.api.cluster.impl.attribute.Attributes;
+import org.bubblecloud.zigbee.api.cluster.impl.general.ColorControlCluster;
+import org.bubblecloud.zigbee.api.cluster.impl.general.LevelControlCluster;
+import org.bubblecloud.zigbee.api.cluster.impl.general.OnOffCluster;
 import org.openhab.binding.zigbee.ZigBeeBindingConstants;
 
 import com.google.common.collect.Sets;
 
 public class ZigBeeLightHandler extends BaseThingHandler implements
-		ZigBeeEventListener {
+		ZigBeeEventListener, ReportListener  {
 
 	public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Sets
 			.newHashSet(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT);
@@ -40,9 +44,12 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	private static final int DIM_STEPSIZE = 30;
 
 	private String lightAddress;
+	private Attribute attrOnOff;
+	private Attribute attrLevel;
+	private Attribute attrColorX;
+	private Attribute attrColorY;
 
 	private Integer currentColorTemp;
-	private Integer currentBrightness;
 	private OnOffType currentOnOff;
 	private Color currentHSB;
 
@@ -59,10 +66,19 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		logger.debug("Initializing ZigBee light handler.");
 		final String configAddress = (String) getConfig().get(
 				ZigBeeBindingConstants.PARAMETER_MACADDRESS);
-		if (configAddress != null) {
-			lightAddress = configAddress;
+		lightAddress = configAddress;
+		attrOnOff = null;
+		attrLevel = null;
+		attrColorX = null;
+		attrColorY = null;
+	}
 
-			if (getCoordinatorHandler() != null) {
+	protected void bridgeHandlerInitialized(ThingHandler thingHandler, Bridge bridge) {
+		coordinatorHandler = (ZigBeeCoordinatorHandler) thingHandler;
+
+		if (lightAddress != null) {
+			if (coordinatorHandler != null) {
+				coordinatorHandler.subscribeEvents(lightAddress, this);
 				// getThing().setStatus(getBridge().getStatus());
 			}
 		}
@@ -72,9 +88,8 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	public void dispose() {
 		logger.debug("Handler disposes. Unregistering listener.");
 		if (lightAddress != null) {
-			ZigBeeCoordinatorHandler coordinatorHandler = getCoordinatorHandler();
 			if (coordinatorHandler != null) {
-				// coordinatorHandler.unregisterLightStatusListener(this);
+				coordinatorHandler.unsubscribeEvents(lightAddress, this);
 			}
 			lightAddress = null;
 		}
@@ -82,7 +97,6 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 
 	@Override
 	public void handleCommand(ChannelUID channelUID, Command command) {
-		ZigBeeCoordinatorHandler coordinatorHandler = getCoordinatorHandler();
 		if (coordinatorHandler == null) {
 			logger.warn("Coordinator handler not found. Cannot handle command without coordinator.");
 			return;
@@ -90,42 +104,30 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 
 		switch (channelUID.getId()) {
 		case ZigBeeBindingConstants.CHANNEL_SWITCH:
-			OnOffType statePower = OnOffType.OFF;
 			if (command instanceof PercentType) {
 				if (((PercentType) command).intValue() == 0) {
-					statePower = OnOffType.OFF;
+					currentOnOff = OnOffType.OFF;
 				} else {
-					statePower = OnOffType.ON;
+					currentOnOff = OnOffType.ON;
 				}
 			} else if (command instanceof OnOffType) {
-				statePower = (OnOffType) command;
+				currentOnOff = (OnOffType) command;
 			}
-			coordinatorHandler.LightPower(lightAddress, statePower);
-			statePower = currentOnOff;
+			coordinatorHandler.LightPower(lightAddress, currentOnOff);
 			break;
 
 		case ZigBeeBindingConstants.CHANNEL_BRIGHTNESS:
-			int stateBrightness = 0;
+			int level = 0;
 			if (command instanceof PercentType) {
-				stateBrightness = ((PercentType) command).intValue();
+				level = ((PercentType) command).intValue();
 			} else if (command instanceof OnOffType) {
 				if ((OnOffType) command == OnOffType.ON) {
-					stateBrightness = 100;
+					level = 100;
 				} else {
-					stateBrightness = 0;
+					level = 0;
 				}
 			}
-			if (stateBrightness == 0) {
-				coordinatorHandler.LightPower(lightAddress, OnOffType.OFF);
-				currentOnOff = OnOffType.OFF;
-			} else {
-				if(currentOnOff == OnOffType.OFF) {
-					coordinatorHandler.LightPower(lightAddress, OnOffType.ON);
-					currentOnOff = OnOffType.ON;
-				}
-				coordinatorHandler.LightBrightness(lightAddress,
-						stateBrightness);
-			}
+			coordinatorHandler.LightBrightness(lightAddress, level);
 			break;
 
 		case ZigBeeBindingConstants.CHANNEL_COLOR:
@@ -135,60 +137,91 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 			coordinatorHandler.LightColor(lightAddress, (HSBType) command);
 			break;
 		}
-
-		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_SWITCH), currentOnOff);
-	}
-
-	private synchronized ZigBeeCoordinatorHandler getCoordinatorHandler() {
-		if (this.coordinatorHandler == null) {
-			Bridge bridge = getBridge();
-			if (bridge == null) {
-				return null;
-			}
-			ThingHandler handler = bridge.getHandler();
-			if (handler instanceof ZigBeeCoordinatorHandler) {
-				this.coordinatorHandler = (ZigBeeCoordinatorHandler) handler;
-				this.coordinatorHandler.subscribeEvents(lightAddress, this);
-			} else {
-				return null;
-			}
-		}
-		return this.coordinatorHandler;
 	}
 
 	@Override
 	public void onEndpointStateChange() {
-		boolean statePower = (boolean) coordinatorHandler.attributeRead(lightAddress,
-				ZigBeeApiConstants.CLUSTER_ID_ON_OFF, 0);
-		OnOffType stateSwitch;
-		if(statePower == true) {
-			currentOnOff = OnOffType.ON;
-		}
-		else {
-			currentOnOff = OnOffType.OFF;			
-		}
-		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_SWITCH), currentOnOff);
-		
-		
-		currentBrightness = (Integer) coordinatorHandler.attributeRead(lightAddress,
-				ZigBeeApiConstants.CLUSTER_ID_LEVEL_CONTROL, 0);
-//		currentHue = (Integer) coordinatorHandler.attributeRead(lightAddress,
-//				ZigBeeApiConstants.CLUSTER_ID_COLOR_CONTROL, 0);
+		try {
+			if (attrOnOff != null) {
+				updateStateOnOff((boolean)attrOnOff.getValue());
+			}
 
+			if (attrLevel != null) {
+				updateStateLevel((int)attrLevel.getValue());
+			}
+
+			if (attrColorX != null && attrColorY != null) {
+				updateStateColor((int)attrColorX.getValue(), (int)attrColorY.getValue());
+			}
+		} catch (ZigBeeClusterException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
-	public void onAttributeUpdate(final Dictionary<Attribute, Object> reports) {
-		final Enumeration<Attribute> attributes = reports.keys();
-		while (attributes.hasMoreElements()) {
-			final Attribute attribute = attributes.nextElement();
-			final Object value = reports.get(attribute);
-			logger.debug("{}: {}={}", lightAddress, attribute.getName(), value);
+	public void openDevice() {
+		attrOnOff = coordinatorHandler.openAttribute(lightAddress,
+				OnOffCluster.ID, Attributes.ON_OFF, this);
+		attrLevel = coordinatorHandler.openAttribute(lightAddress,
+				LevelControlCluster.ID, Attributes.CURRENT_LEVEL, this);
 
-			if (attribute.getId() == 0) {
+		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT)) {
+			attrColorX = coordinatorHandler.openAttribute(lightAddress,
+					ColorControlCluster.ID, Attributes.CURRENT_X, null);
+			attrColorY = coordinatorHandler.openAttribute(lightAddress,
+					ColorControlCluster.ID, Attributes.CURRENT_Y, null);
+		}
+	}
 
+	@Override
+	public void closeDevice() {
+		coordinatorHandler.closeAttribute(attrOnOff, this);
+		coordinatorHandler.closeAttribute(attrLevel, this);
+		coordinatorHandler.closeAttribute(attrColorX, null);
+		coordinatorHandler.closeAttribute(attrColorY, null);
+	}
+
+	@Override
+	public void receivedReport(String endPointId, short clusterId,
+			Dictionary<Attribute, Object> reports) {
+		logger.debug("ZigBee attribute reports {} from {}", reports, endPointId);
+		if (attrOnOff != null) {
+			Object value = reports.get(attrOnOff);
+			if (value != null) {
+				updateStateOnOff((boolean)value);
 			}
 		}
+		if (attrLevel != null) {
+			Object value = reports.get(attrLevel);
+			if (value != null) {
+				updateStateLevel((int)value);
+			}
+		}
+	}
+
+	private void updateStateOnOff(boolean onOff) {
+		currentOnOff = onOff == true ? OnOffType.ON : OnOffType.OFF;
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_SWITCH), currentOnOff);
+	}
+
+	private void updateStateLevel(int level) {
+		PercentType chanPercent;
+		if (currentOnOff == OnOffType.OFF) {
+			level = 0;
+		}
+		chanPercent = new PercentType ((int)(level * 100.0 / 254.0 + 0.5));
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_BRIGHTNESS), chanPercent);
+	}
+
+	private void updateStateColor(int colorX, int colorY) {
+/*      TODO implement Rgb.cie2rgb, and saturation
+		Integer stateTemp = (Integer) coordinatorHandler.attributeRead(lightAddress,
+		ZigBeeApiConstants.CLUSTER_ID_COLOR_CONTROL, Attributes.COLOR_TEMPERATURE.getId());
+		Rgb rgb = Rgb.cie2rgb(stateX / 65536.0, stateY / 65536.0, 1);
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLOR), rgb);
+		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLORTEMPERATURE), chanSat);
+*/
 	}
 
 	/*

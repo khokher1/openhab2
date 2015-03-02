@@ -27,7 +27,9 @@ import org.bubblecloud.zigbee.api.cluster.general.ColorControl;
 import org.bubblecloud.zigbee.api.cluster.general.LevelControl;
 import org.bubblecloud.zigbee.api.cluster.general.OnOff;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
+import org.bubblecloud.zigbee.api.cluster.impl.api.core.ReportListener;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
+import org.bubblecloud.zigbee.api.cluster.impl.attribute.AttributeDescriptor;
 import org.bubblecloud.zigbee.network.model.DiscoveryMode;
 import org.bubblecloud.zigbee.network.port.ZigBeePort;
 import org.bubblecloud.zigbee.util.Cie;
@@ -72,6 +74,11 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	protected void subscribeEvents(String macAddress,
 			ZigBeeEventListener handler) {
 		eventListeners.put(macAddress, handler);
+	}
+
+	protected void unsubscribeEvents(String macAddress,
+			ZigBeeEventListener handler) {
+		eventListeners.remove(macAddress, handler);
 	}
 
 	@Override
@@ -143,12 +150,6 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 					device.getDeviceType(), device.getEndpointId());
 
 			addNewDevice(device);
-
-			// Signal to the handlers that they are known...
-			if (eventListeners.get(device.getEndpointId()) != null) {
-				eventListeners.get(device.getEndpointId())
-						.onEndpointStateChange();
-			}
 		}
 
 		// Add a listener for any new devices
@@ -310,7 +311,30 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 			return null;
 		}
 	}
-	
+
+	public Attribute openAttribute(String zigbeeAddress, short clusterId, AttributeDescriptor attributeId, ZigBeeEventListener listener) {
+		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi, zigbeeAddress);
+		Cluster cluster = device.getCluster(clusterId);
+		if (cluster == null) {
+			return null;
+		}
+		Attribute attribute = cluster.getAttribute(attributeId.getId());
+		if (attribute == null) {
+			return null;
+		}
+
+		if (listener != null) {
+			attribute.getReporter().addReportListener((ReportListener)listener);
+		}
+		return attribute;
+	}
+
+	public void closeAttribute(Attribute attribute, ZigBeeEventListener listener) {
+		if (attribute != null && listener != null) {
+			attribute.getReporter().removeReportListener((ReportListener)listener);
+		}
+	}
+
 	/**
 	 * Returns a list of all known devices
 	 * @return list of devices
@@ -369,6 +393,11 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		// TODO Auto-generated method stub
 		logger.debug("Device UPDATED: {} {} {}", device.getIEEEAddress(),
 				device.getDeviceType(), device.getProfileId());
+
+		ZigBeeEventListener listener = eventListeners.get(device.getEndpointId());
+		if (listener != null) {
+			listener.onEndpointStateChange();
+		}
 	}
 
 	@Override
@@ -376,6 +405,11 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		// TODO Auto-generated method stub
 		logger.debug("Device REMOVED: {} {} {}", device.getIEEEAddress(),
 				device.getDeviceType(), device.getProfileId());
+
+		ZigBeeEventListener listener = eventListeners.get(device.getEndpointId());
+		if (listener != null) {
+			listener.closeDevice();
+		}
 	}
 	
 	/**
@@ -402,6 +436,13 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 				if(model != null) {
 					description = manufacturer.toString().trim() + ":" + model.toString().trim();
 				}
+			}
+
+			// Signal to the handlers that they are known...
+			ZigBeeEventListener listener = eventListeners.get(device.getEndpointId());
+			if (listener != null) {
+				listener.openDevice();
+				listener.onEndpointStateChange();
 			}
 
 			discoveryService.deviceAdded(device, description);

@@ -14,7 +14,8 @@ import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
 public interface ZigBeeEventListener {
 	public void onEndpointStateChange();
 
-	public void onAttributeUpdate(final Dictionary<Attribute, Object> reports);
+	public void openDevice();
+	public void closeDevice();
 
 	/**
 	 * This method is called whenever the state of the given light has changed.
