@@ -276,8 +276,8 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		}
 
 		try {
-			// Range of 2000K to 6000K, gain = 4000K, offset = 2000K
-			double kelvin = state.intValue() * 4000.0 / 100.0 + 2000.0;
+			// Range of 2000K to 6500K, gain = 4500K, offset = 2000K
+			double kelvin = state.intValue() * 4500.0 / 100.0 + 2000.0;
 			colorControl.moveToColorTemperature((short)(1e6 / kelvin + 0.5), 10);
 		} catch (ZigBeeDeviceException e) {
 			e.printStackTrace();

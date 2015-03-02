@@ -254,7 +254,7 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	}
 
 	private void updateStateColorTemp(int colorTemp) {
-		// Range of 2000K to 6000K, gain = 4000K, offset = 2000K
+		// Range of 2000K to 6500K, gain = 4500K, offset = 2000K
 		int value = (int)(((1e6 / colorTemp) - 2000.0) / 4000.0 * 100.0 + 0.5);
 		if (value < 0) {
 			value = 0;
