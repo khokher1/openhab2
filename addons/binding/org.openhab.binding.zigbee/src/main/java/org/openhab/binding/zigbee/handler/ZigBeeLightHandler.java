@@ -163,8 +163,11 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	public void openDevice() {
 		attrOnOff = coordinatorHandler.openAttribute(lightAddress,
 				OnOffCluster.ID, Attributes.ON_OFF, this);
-		attrLevel = coordinatorHandler.openAttribute(lightAddress,
-				LevelControlCluster.ID, Attributes.CURRENT_LEVEL, this);
+
+		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_ON_OFF_LIGHT) == false) {
+			attrLevel = coordinatorHandler.openAttribute(lightAddress,
+					LevelControlCluster.ID, Attributes.CURRENT_LEVEL, this);
+		}
 
 		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT)) {
 			attrColorX = coordinatorHandler.openAttribute(lightAddress,

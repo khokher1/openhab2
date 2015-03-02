@@ -51,6 +51,10 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 		// best matching cluster list and use the name for this Thing.
 		// A 'best match' is defined as the maximum number of matching clusters.
 		zigbeeThingTypeList.add(new ZigBeeThingType(
+				"OnOffLight", new int[] {
+				ZigBeeApiConstants.CLUSTER_ID_ON_OFF
+			}));
+		zigbeeThingTypeList.add(new ZigBeeThingType(
 				"DimmableLight", new int[] {
 				ZigBeeApiConstants.CLUSTER_ID_ON_OFF,
 				ZigBeeApiConstants.CLUSTER_ID_LEVEL_CONTROL
