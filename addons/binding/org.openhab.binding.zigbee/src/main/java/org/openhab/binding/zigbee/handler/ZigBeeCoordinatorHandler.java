@@ -21,11 +21,7 @@ import java.util.concurrent.ScheduledFuture;
 import org.bubblecloud.zigbee.ZigBeeApi;
 import org.bubblecloud.zigbee.api.Device;
 import org.bubblecloud.zigbee.api.DeviceListener;
-import org.bubblecloud.zigbee.api.ZigBeeDeviceException;
 import org.bubblecloud.zigbee.api.cluster.Cluster;
-import org.bubblecloud.zigbee.api.cluster.general.ColorControl;
-import org.bubblecloud.zigbee.api.cluster.general.LevelControl;
-import org.bubblecloud.zigbee.api.cluster.general.OnOff;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ReportListener;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
@@ -33,9 +29,6 @@ import org.bubblecloud.zigbee.api.cluster.impl.attribute.AttributeDescriptor;
 import org.bubblecloud.zigbee.network.model.DiscoveryMode;
 import org.bubblecloud.zigbee.network.port.ZigBeePort;
 import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.library.types.HSBType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -197,95 +190,6 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		return device;
 	}
 
-	public boolean LightPower(String lightAddress, OnOffType state) {
-		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
-				lightAddress);
-		if (device == null) {
-			return false;
-		}
-		final OnOff onOff = device.getCluster(OnOff.class);
-		try {
-			if (state == OnOffType.ON) {
-				onOff.on();
-			} else {
-				onOff.off();
-			}
-		} catch (ZigBeeDeviceException e) {
-			e.printStackTrace();
-		}
-
-		return true;
-	}
-
-	public boolean LightBrightness(String lightAddress, int state) {
-		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
-				lightAddress);
-		if (device == null) {
-			return false;
-		}
-
-		try {
-			final LevelControl levelControl = device
-					.getCluster(LevelControl.class);
-			levelControl.moveToLevelWithOnOff((short)(state * 254.0 / 100.0 + 0.5), 10);
-		} catch (ZigBeeDeviceException e) {
-			e.printStackTrace();
-		}
-
-		return true;
-	}
-
-	public boolean LightColor(String lightAddress, HSBType state) {
-		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
-				lightAddress);
-		if (device == null) {
-			return false;
-		}
-
-		final ColorControl colorControl = device.getCluster(ColorControl.class);
-		if (colorControl == null) {
-			logger.debug("Device {} does not support color control.",
-					lightAddress);
-			return false;
-		}
-
-		try {
-			int hue = state.getHue().intValue();
-			int saturation = state.getSaturation().intValue();
-			colorControl.moveToHue((int)(hue * 254.0 / 360.0 + 0.5), 0, 10);
-			colorControl.movetoSaturation((int)(saturation * 254.0 / 100.0 + 0.5), 10);
-		} catch (ZigBeeDeviceException e) {
-			e.printStackTrace();
-		}
-
-		return true;
-	}
-
-	public boolean LightColorTemp(String lightAddress, PercentType state) {
-		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
-				lightAddress);
-		if (device == null) {
-			return false;
-		}
-
-		final ColorControl colorControl = device.getCluster(ColorControl.class);
-		if (colorControl == null) {
-			logger.debug("Device {} does not support color control.",
-					lightAddress);
-			return false;
-		}
-
-		try {
-			// Range of 2000K to 6500K, gain = 4500K, offset = 2000K
-			double kelvin = state.intValue() * 4500.0 / 100.0 + 2000.0;
-			colorControl.moveToColorTemperature((short)(1e6 / kelvin + 0.5), 10);
-		} catch (ZigBeeDeviceException e) {
-			e.printStackTrace();
-		}
-
-		return true;
-	}
-
 	public Object attributeRead(String zigbeeAddress, int clusterId, int attributeIndex) {
 		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi,
 				zigbeeAddress);
@@ -319,7 +223,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		}
 	}
 
-	public Attribute openAttribute(String zigbeeAddress, short clusterId, AttributeDescriptor attributeId, ZigBeeEventListener listener) {
+	public <T extends Cluster> Attribute openAttribute(String zigbeeAddress, Class<T> clusterId, AttributeDescriptor attributeId, ZigBeeEventListener listener) {
 		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi, zigbeeAddress);
 		Cluster cluster = device.getCluster(clusterId);
 		if (cluster == null) {
@@ -340,6 +244,15 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		if (attribute != null && listener != null) {
 			attribute.getReporter().removeReportListener((ReportListener)listener);
 		}
+	}
+
+	public <T extends Cluster> T openCluster(String zigbeeAddress, Class<T> clusterId) {
+		final Device device = getDeviceByIndexOrEndpointId(zigbeeApi, zigbeeAddress);
+		return device.getCluster(clusterId);
+	}
+
+	public void closeCluster(Cluster cluster) {
+
 	}
 
 	/**
