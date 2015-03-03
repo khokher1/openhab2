@@ -39,8 +39,10 @@ import com.google.common.collect.Sets;
 public class ZigBeeLightHandler extends BaseThingHandler implements
 		ZigBeeEventListener, ReportListener  {
 
-	public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Sets
-			.newHashSet(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT);
+	public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Sets .newHashSet(
+			ZigBeeBindingConstants.THING_TYPE_ON_OFF_LIGHT,
+			ZigBeeBindingConstants.THING_TYPE_DIMMABLE_LIGHT,
+			ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT);
 
 	private static final int DIM_STEPSIZE = 30;
 
