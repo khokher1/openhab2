@@ -134,8 +134,6 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		logger.debug("ZigBee network READY. Found "
 				+ zigbeeApi.getDevices().size() + " nodes.");
 
-		updateStatus(ThingStatus.ONLINE);
-
 		final List<Device> devices = zigbeeApi.getDevices();
 		for (int i = 0; i < devices.size(); i++) {
 			final Device device = devices.get(i);
@@ -361,8 +359,9 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 			// Signal to the handlers that they are known...
 			ZigBeeEventListener listener = eventListeners.get(device.getEndpointId());
 			if (listener != null) {
-				listener.openDevice();
-				listener.onEndpointStateChange();
+				if (listener.openDevice()) {
+					listener.onEndpointStateChange();
+				}
 			}
 
 			discoveryService.deviceAdded(device, description);
