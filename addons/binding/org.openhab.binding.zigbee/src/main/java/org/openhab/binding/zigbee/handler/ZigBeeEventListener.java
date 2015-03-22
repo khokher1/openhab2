@@ -14,7 +14,7 @@ import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
 public interface ZigBeeEventListener {
 	public void onEndpointStateChange();
 
-	public void openDevice();
+	public boolean openDevice();
 	public void closeDevice();
 
 	/**

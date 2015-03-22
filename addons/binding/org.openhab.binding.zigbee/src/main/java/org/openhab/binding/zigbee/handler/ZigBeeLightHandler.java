@@ -14,6 +14,7 @@ import org.eclipse.smarthome.core.library.types.PercentType;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
+import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
@@ -24,13 +25,14 @@ import org.slf4j.LoggerFactory;
 import java.util.Dictionary;
 import java.util.Set;
 
+import org.bubblecloud.zigbee.api.ZigBeeDeviceException;
+import org.bubblecloud.zigbee.api.cluster.general.ColorControl;
+import org.bubblecloud.zigbee.api.cluster.general.LevelControl;
+import org.bubblecloud.zigbee.api.cluster.general.OnOff;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.Attribute;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ReportListener;
 import org.bubblecloud.zigbee.api.cluster.impl.api.core.ZigBeeClusterException;
 import org.bubblecloud.zigbee.api.cluster.impl.attribute.Attributes;
-import org.bubblecloud.zigbee.api.cluster.impl.general.ColorControlCluster;
-import org.bubblecloud.zigbee.api.cluster.impl.general.LevelControlCluster;
-import org.bubblecloud.zigbee.api.cluster.impl.general.OnOffCluster;
 import org.openhab.binding.zigbee.ZigBeeBindingConstants;
 
 import com.google.common.collect.Sets;
@@ -38,8 +40,10 @@ import com.google.common.collect.Sets;
 public class ZigBeeLightHandler extends BaseThingHandler implements
 		ZigBeeEventListener, ReportListener  {
 
-	public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Sets
-			.newHashSet(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT);
+	public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES = Sets .newHashSet(
+			ZigBeeBindingConstants.THING_TYPE_ON_OFF_LIGHT,
+			ZigBeeBindingConstants.THING_TYPE_DIMMABLE_LIGHT,
+			ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT);
 
 	private static final int DIM_STEPSIZE = 30;
 
@@ -49,6 +53,9 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 	private Attribute attrHue;
 	private Attribute attrSaturation;
 	private Attribute attrColorTemp;
+	private OnOff clusOnOff;
+	private LevelControl clusLevel;
+	private ColorControl clusColor;
 
 	private OnOffType currentOnOff;
 	private HSBType currentHSB;
@@ -72,6 +79,9 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		attrHue = null;
 		attrSaturation = null;
 		attrColorTemp = null;
+		clusOnOff = null;
+		clusLevel = null;
+		clusColor = null;
 	}
 
 	protected void bridgeHandlerInitialized(ThingHandler thingHandler, Bridge bridge) {
@@ -83,6 +93,8 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 				// getThing().setStatus(getBridge().getStatus());
 			}
 		}
+		// until we get an update put the Thing offline
+		updateStatus(ThingStatus.OFFLINE);
 	}
 
 	@Override
@@ -114,7 +126,7 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 			} else if (command instanceof OnOffType) {
 				currentOnOff = (OnOffType) command;
 			}
-			coordinatorHandler.LightPower(lightAddress, currentOnOff);
+			commandOnOff(currentOnOff);
 			break;
 
 		case ZigBeeBindingConstants.CHANNEL_BRIGHTNESS:
@@ -128,7 +140,7 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 					level = 0;
 				}
 			}
-			coordinatorHandler.LightBrightness(lightAddress, level);
+			commandLevel(level);
 			break;
 
 		case ZigBeeBindingConstants.CHANNEL_COLOR:
@@ -145,7 +157,7 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 				}
 				currentHSB = new HSBType(currentHSB.getHue(), saturation, PercentType.HUNDRED);
 			}
-			coordinatorHandler.LightColor(lightAddress, currentHSB);
+			commandColor(currentHSB);
 			break;
 		case ZigBeeBindingConstants.CHANNEL_COLORTEMPERATURE:
 			PercentType colorTemp = PercentType.ZERO;
@@ -158,9 +170,59 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 					colorTemp = PercentType.ZERO;
 				}
 			}
-			coordinatorHandler.LightColorTemp(lightAddress, colorTemp);
+			commandColorTemp(colorTemp);
 			break;
 		}
+	}
+
+	@Override
+	public boolean openDevice() {
+		attrOnOff = coordinatorHandler.openAttribute(lightAddress,
+				OnOff.class, Attributes.ON_OFF, this);
+		clusOnOff = (OnOff)coordinatorHandler.openCluster(lightAddress, OnOff.class);
+		if (attrOnOff == null || clusOnOff == null) {
+			logger.error("Error opening device on/off controls {}", lightAddress);
+			return false;
+		}
+
+		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_ON_OFF_LIGHT) == false) {
+			attrLevel = coordinatorHandler.openAttribute(lightAddress,
+					LevelControl.class, Attributes.CURRENT_LEVEL, this);
+			clusLevel = coordinatorHandler.openCluster(lightAddress, LevelControl.class);
+			if (attrLevel == null || clusLevel == null) {
+				logger.error("Error opening device level controls {}", lightAddress);
+				return false;
+			}
+		}
+
+		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT)) {
+			attrHue = coordinatorHandler.openAttribute(lightAddress,
+					ColorControl.class, Attributes.CURRENT_HUE, null);
+			attrSaturation = coordinatorHandler.openAttribute(lightAddress,
+					ColorControl.class, Attributes.CURRENT_SATURATION, null);
+			attrColorTemp = coordinatorHandler.openAttribute(lightAddress,
+					ColorControl.class, Attributes.COLOR_TEMPERATURE, null);
+			clusColor = coordinatorHandler.openCluster(lightAddress, ColorControl.class);
+			if (attrHue == null || attrSaturation == null || attrColorTemp == null || clusColor == null) {
+				logger.error("Error opening device color controls {}", lightAddress);
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
+	public void closeDevice() {
+		updateStatus(ThingStatus.OFFLINE);
+
+		coordinatorHandler.closeAttribute(attrOnOff, this);
+		coordinatorHandler.closeAttribute(attrLevel, this);
+		coordinatorHandler.closeAttribute(attrHue, null);
+		coordinatorHandler.closeAttribute(attrSaturation, null);
+		coordinatorHandler.closeAttribute(attrColorTemp, null);
+		coordinatorHandler.closeCluster(clusOnOff);
+		coordinatorHandler.closeCluster(clusLevel);
+		coordinatorHandler.closeCluster(clusColor);
 	}
 
 	@Override
@@ -178,39 +240,12 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 			if (attrColorTemp != null) {
 				updateStateColorTemp((int)attrColorTemp.getValue());
 			}
+			// Device is now online
+			updateStatus(ThingStatus.ONLINE);
 		} catch (ZigBeeClusterException e) {
-			// TODO Auto-generated catch block
+			updateStatus(ThingStatus.OFFLINE);
 			e.printStackTrace();
 		}
-	}
-
-	@Override
-	public void openDevice() {
-		attrOnOff = coordinatorHandler.openAttribute(lightAddress,
-				OnOffCluster.ID, Attributes.ON_OFF, this);
-
-		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_ON_OFF_LIGHT) == false) {
-			attrLevel = coordinatorHandler.openAttribute(lightAddress,
-					LevelControlCluster.ID, Attributes.CURRENT_LEVEL, this);
-		}
-
-		if (this.getThing().getThingTypeUID().equals(ZigBeeBindingConstants.THING_TYPE_COLOR_DIMMABLE_LIGHT)) {
-			attrHue = coordinatorHandler.openAttribute(lightAddress,
-					ColorControlCluster.ID, Attributes.CURRENT_HUE, null);
-			attrSaturation = coordinatorHandler.openAttribute(lightAddress,
-					ColorControlCluster.ID, Attributes.CURRENT_SATURATION, null);
-			attrColorTemp = coordinatorHandler.openAttribute(lightAddress,
-					ColorControlCluster.ID, Attributes.COLOR_TEMPERATURE, null);
-		}
-	}
-
-	@Override
-	public void closeDevice() {
-		coordinatorHandler.closeAttribute(attrOnOff, this);
-		coordinatorHandler.closeAttribute(attrLevel, this);
-		coordinatorHandler.closeAttribute(attrHue, null);
-		coordinatorHandler.closeAttribute(attrSaturation, null);
-		coordinatorHandler.closeAttribute(attrColorTemp, null);
 	}
 
 	@Override
@@ -229,11 +264,44 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 				updateStateLevel((int)value);
 			}
 		}
+
+		updateStatus(ThingStatus.ONLINE);
+	}
+
+	public void commandOnOff(OnOffType state) {
+		if (clusOnOff == null) {
+			return;
+		}
+		try {
+			if (state == OnOffType.ON) {
+				clusOnOff.on();
+			} else {
+				clusOnOff.off();
+			}
+			updateStatus(ThingStatus.ONLINE);
+		} catch (ZigBeeDeviceException e) {
+			updateStatus(ThingStatus.OFFLINE);
+			e.printStackTrace();
+		}
 	}
 
 	private void updateStateOnOff(boolean onOff) {
 		currentOnOff = onOff == true ? OnOffType.ON : OnOffType.OFF;
 		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_SWITCH), currentOnOff);
+	}
+
+
+	private void commandLevel(int state) {
+		if (clusLevel == null) {
+			return;
+		}
+		try {
+			clusLevel.moveToLevelWithOnOff((short)(state * 254.0 / 100.0 + 0.5), 10);
+			updateStatus(ThingStatus.ONLINE);
+		} catch (ZigBeeDeviceException e) {
+			updateStatus(ThingStatus.OFFLINE);
+			e.printStackTrace();
+		}
 	}
 
 	private void updateStateLevel(int level) {
@@ -245,6 +313,23 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_BRIGHTNESS), chanPercent);
 	}
 
+	public void commandColor(HSBType state) {
+		if (clusColor == null) {
+			return;
+		}
+
+		try {
+			int hue = state.getHue().intValue();
+			int saturation = state.getSaturation().intValue();
+			clusColor.moveToHue((int)(hue * 254.0 / 360.0 + 0.5), 0, 10);
+			clusColor.movetoSaturation((int)(saturation * 254.0 / 100.0 + 0.5), 10);
+			updateStatus(ThingStatus.ONLINE);
+		} catch (ZigBeeDeviceException e) {
+			updateStatus(ThingStatus.OFFLINE);
+			e.printStackTrace();
+		}
+	}
+
 	private void updateStateColor(int hue, int saturation) {
 		currentHSB = new HSBType(new DecimalType(hue * 360.0 / 254.0 + 0.5),
 				new PercentType((int)(saturation * 100.0 / 254.0 + 0.5)), PercentType.HUNDRED);
@@ -253,8 +338,24 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLOR), statePercent);
 	}
 
+	public void commandColorTemp(PercentType state) {
+		if (clusColor == null) {
+			return;
+		}
+
+		// Range of 2000K to 6500K, gain = 4500K, offset = 2000K
+		double kelvin = state.intValue() * 4500.0 / 100.0 + 2000.0;
+		try {
+			clusColor.moveToColorTemperature((short)(1e6 / kelvin + 0.5), 10);
+			updateStatus(ThingStatus.ONLINE);
+		} catch (ZigBeeDeviceException e) {
+			updateStatus(ThingStatus.OFFLINE);
+			e.printStackTrace();
+		}
+	}
+
 	private void updateStateColorTemp(int colorTemp) {
-		// Range of 2000K to 6000K, gain = 4000K, offset = 2000K
+		// Range of 2000K to 6500K, gain = 4500K, offset = 2000K
 		int value = (int)(((1e6 / colorTemp) - 2000.0) / 4000.0 * 100.0 + 0.5);
 		if (value < 0) {
 			value = 0;
@@ -264,6 +365,7 @@ public class ZigBeeLightHandler extends BaseThingHandler implements
 		PercentType state = new PercentType(value);
 		updateState(new ChannelUID(getThing().getUID(), ZigBeeBindingConstants.CHANNEL_COLORTEMPERATURE), state);
 	}
+
 	/*
 	 * @Override public void onLightRemoved(HueBridge bridge, FullLight light) {
 	 * 
