@@ -55,7 +55,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	
 	private ZigBeeDiscoveryService discoveryService;
 
-	private ConcurrentMap<String, ZigBeeEventListener> eventListeners = new ConcurrentHashMap();
+	private ConcurrentMap<String, ZigBeeEventListener> eventListeners = new ConcurrentHashMap<String, ZigBeeEventListener>();
 
 	private Logger logger = LoggerFactory
 			.getLogger(ZigBeeCoordinatorHandler.class);
