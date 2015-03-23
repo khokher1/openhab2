@@ -233,14 +233,14 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 		}
 
 		if (listener != null) {
-			attribute.getReporter().addReportListener((ReportListener)listener);
+			attribute.getReporter().addReportListener((ReportListener)listener, false);
 		}
 		return attribute;
 	}
 
 	public void closeAttribute(Attribute attribute, ZigBeeEventListener listener) {
 		if (attribute != null && listener != null) {
-			attribute.getReporter().removeReportListener((ReportListener)listener);
+			attribute.getReporter().removeReportListener((ReportListener)listener, false);
 		}
 	}
 
@@ -300,7 +300,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	@Override
 	public void deviceAdded(Device device) {
 		// TODO Auto-generated method stub
-		logger.debug("Device ADDED: {} {} {}", device.getIEEEAddress(),
+		logger.debug("Device ADDED: {} {} {}", device.getIeeeAddress(),
 				device.getDeviceType(), device.getProfileId());
 		
 		addNewDevice(device);
@@ -309,7 +309,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	@Override
 	public void deviceUpdated(Device device) {
 		// TODO Auto-generated method stub
-		logger.debug("Device UPDATED: {} {} {}", device.getIEEEAddress(),
+		logger.debug("Device UPDATED: {} {} {}", device.getIeeeAddress(),
 				device.getDeviceType(), device.getProfileId());
 
 		ZigBeeEventListener listener = eventListeners.get(device.getEndpointId());
@@ -321,7 +321,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 	@Override
 	public void deviceRemoved(Device device) {
 		// TODO Auto-generated method stub
-		logger.debug("Device REMOVED: {} {} {}", device.getIEEEAddress(),
+		logger.debug("Device REMOVED: {} {} {}", device.getIeeeAddress(),
 				device.getDeviceType(), device.getProfileId());
 
 		ZigBeeEventListener listener = eventListeners.get(device.getEndpointId());
@@ -343,7 +343,7 @@ public abstract class ZigBeeCoordinatorHandler extends BaseBridgeHandler
 
 	private class DiscoveryThread extends Thread {
 		public void run(Device device) {
-			logger.debug("Device Discovery: {} {} {}", device.getIEEEAddress(),
+			logger.debug("Device Discovery: {} {} {}", device.getIeeeAddress(),
 					device.getDeviceType(), device.getProfileId());
 			
 			String description = null;

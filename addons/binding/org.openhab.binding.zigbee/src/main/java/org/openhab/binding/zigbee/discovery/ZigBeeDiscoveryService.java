@@ -154,7 +154,7 @@ public class ZigBeeDiscoveryService extends AbstractDiscoveryService {
 			thingDiscovered(discoveryResult);
 		} else {
 			logger.debug("Discovered unknown device type '{}' at address {}",
-					device.getDeviceType(), device.getIEEEAddress());
+					device.getDeviceType(), device.getIeeeAddress());
 		}
 	}
 
